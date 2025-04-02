@@ -6,6 +6,8 @@
     <title>Alerta de Boletos - Lembrete de Pagamentos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-SEU_ID_AQUI" crossorigin="anonymous"></script>
     <style>
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -98,6 +100,15 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Add Bill Form -->
             <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-1 order-2 lg:order-1">
+                <!-- Anúncio Superior -->
+                <div class="mb-4">
+                    <ins class="adsbygoogle"
+                         style="display:block"
+                         data-ad-client="ca-pub-SEU_ID_AQUI"
+                         data-ad-slot="SEU_SLOT_AQUI"
+                         data-ad-format="auto"
+                         data-full-width-responsive="true"></ins>
+                </div>
                 <h2 class="text-xl font-semibold mb-4 text-indigo-700">
                     <i class="fas fa-plus-circle mr-2"></i> Adicionar Boleto
                 </h2>
@@ -134,6 +145,15 @@
                         <button id="filterPending" class="px-3 py-1 bg-gray-200 rounded-md text-sm">Pendentes</button>
                         <button id="filterPaid" class="px-3 py-1 bg-gray-200 rounded-md text-sm">Pagados</button>
                     </div>
+                </div>
+
+                <!-- Anúncio Lateral -->
+                <div class="mb-4">
+                    <ins class="adsbygoogle"
+                         style="display:block"
+                         data-ad-client="ca-pub-SEU_ID_AQUI"
+                         data-ad-slot="SEU_SLOT_AQUI"
+                         data-ad-format="vertical"></ins>
                 </div>
 
                 <div id="billsContainer" class="space-y-4">
@@ -200,6 +220,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Inicializa os anúncios
+            try {
+                (adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (error) {
+                console.log('Erro ao carregar anúncios:', error);
+            }
+
             // DOM Elements
             const billForm = document.getElementById('billForm');
             const billsContainer = document.getElementById('billsContainer');
@@ -232,6 +259,7 @@
             let visualAlertTimeout = null;
             let soundEnabled = localStorage.getItem('soundEnabled') === 'true';
             let soundInitialized = false;
+            let alarmSoundInterval = null;
             
             // Initialize
             renderBills();
@@ -452,8 +480,8 @@
                 // Show visual alert
                 showVisualAlert('urgent');
                 
-                // Play notification sound
-                playNotificationSound();
+                // Play notification sound repeatedly
+                startRepeatedSound();
                 
                 // Show alarm modal
                 alarmMessage.textContent = `O boleto "${bill.name}" venceu agora! Valor: R$ ${bill.value.toFixed(2)}`;
@@ -483,11 +511,37 @@
                 }
             }
 
+            function startRepeatedSound() {
+                if (alarmSoundInterval) {
+                    clearInterval(alarmSoundInterval);
+                }
+                
+                // Play sound immediately
+                playNotificationSound();
+                
+                // Then play every 2 seconds
+                alarmSoundInterval = setInterval(() => {
+                    if (soundEnabled && soundInitialized) {
+                        playNotificationSound();
+                    }
+                }, 2000);
+            }
+
+            function stopRepeatedSound() {
+                if (alarmSoundInterval) {
+                    clearInterval(alarmSoundInterval);
+                    alarmSoundInterval = null;
+                }
+            }
+
             function snoozeCurrentAlarm() {
                 const billId = parseInt(alarmModal.dataset.billId);
                 const bill = bills.find(b => b.id === billId);
                 
                 if (bill) {
+                    // Stop the repeated sound
+                    stopRepeatedSound();
+                    
                     // Hide modal
                     alarmModal.classList.add('hidden');
                     
@@ -504,6 +558,9 @@
 
             function dismissCurrentAlarm() {
                 const billId = parseInt(alarmModal.dataset.billId);
+                
+                // Stop the repeated sound
+                stopRepeatedSound();
                 
                 // Hide modal
                 alarmModal.classList.add('hidden');
