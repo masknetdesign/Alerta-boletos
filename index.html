@@ -108,11 +108,6 @@
                         <input type="datetime-local" id="billDueDate" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
                     </div>
                     
-                    <div>
-                        <label for="billDescription" class="block text-sm font-medium text-gray-700 mb-1">Descrição (Opcional)</label>
-                        <textarea id="billDescription" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Detalhes adicionais..."></textarea>
-                    </div>
-                    
                     <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition flex items-center justify-center">
                         <i class="fas fa-save mr-2"></i> Salvar Boleto
                     </button>
@@ -246,14 +241,12 @@
                 const name = document.getElementById('billName').value;
                 const value = parseFloat(document.getElementById('billValue').value);
                 const dueDate = document.getElementById('billDueDate').value;
-                const description = document.getElementById('billDescription').value;
                 
                 const newBill = {
                     id: Date.now(),
                     name,
                     value,
                     dueDate: new Date(dueDate).toISOString(),
-                    description,
                     paid: false,
                     createdAt: new Date().toISOString()
                 };
@@ -320,7 +313,6 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <h3 class="font-semibold text-lg">${bill.name}</h3>
-                                <p class="text-gray-600 text-sm">${bill.description || 'Sem descrição'}</p>
                             </div>
                             <span class="font-bold text-lg">R$ ${bill.value.toFixed(2)}</span>
                         </div>
