@@ -81,6 +81,15 @@
                         <span id="notificationCount" class="notification-badge hidden">0</span>
                     </button>
                 </div>
+                <!-- Sound Controls -->
+                <div class="flex items-center space-x-2 ml-4">
+                    <button id="soundToggle" class="p-2 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
+                        <i class="fas fa-volume-up text-xl"></i>
+                    </button>
+                    <div class="w-24">
+                        <input type="range" id="volumeControl" min="0" max="100" value="50" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
             </div>
             <p class="text-gray-600 mt-2">Nunca mais perca o prazo de pagamento dos seus boletos</p>
         </header>
@@ -182,6 +191,11 @@
 
         <!-- Visual Alert -->
         <div id="visualAlert" class="fixed top-0 left-0 w-full h-1 bg-red-500 transform -translate-y-full transition-transform duration-300"></div>
+
+        <!-- Notification Sound -->
+        <audio id="notificationSound" preload="auto">
+            <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+        </audio>
     </div>
 
     <script>
@@ -205,6 +219,9 @@
             const filterPending = document.getElementById('filterPending');
             const filterPaid = document.getElementById('filterPaid');
             const visualAlert = document.getElementById('visualAlert');
+            const notificationSound = document.getElementById('notificationSound');
+            const soundToggle = document.getElementById('soundToggle');
+            const volumeControl = document.getElementById('volumeControl');
             
             // State
             let bills = JSON.parse(localStorage.getItem('bills')) || [];
@@ -213,12 +230,16 @@
             let alarmTimeouts = {};
             let snoozeTimeouts = {};
             let visualAlertTimeout = null;
+            let soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+            let soundInitialized = false;
             
             // Initialize
             renderBills();
             updateNotificationBadge();
             checkDueBills();
             setupAlarms();
+            updateSoundUI();
+            initializeSound();
 
             // Set up interval to check for due bills every minute
             setInterval(checkDueBills, 60000);
@@ -233,6 +254,8 @@
             filterPaid.addEventListener('click', () => changeFilter('paid'));
             snoozeAlarm.addEventListener('click', snoozeCurrentAlarm);
             dismissAlarm.addEventListener('click', dismissCurrentAlarm);
+            soundToggle.addEventListener('click', toggleSound);
+            volumeControl.addEventListener('input', updateVolume);
 
             // Functions
             function addBill(e) {
@@ -429,6 +452,9 @@
                 // Show visual alert
                 showVisualAlert('urgent');
                 
+                // Play notification sound
+                playNotificationSound();
+                
                 // Show alarm modal
                 alarmMessage.textContent = `O boleto "${bill.name}" venceu agora! Valor: R$ ${bill.value.toFixed(2)}`;
                 alarmModal.classList.remove('hidden');
@@ -527,6 +553,7 @@
                     saveNotifications();
                     updateNotificationBadge();
                     showVisualAlert(minutesDiff <= 0 ? 'urgent' : 'normal');
+                    playNotificationSound();
                     
                     if (!notificationModal.classList.contains('hidden')) {
                         renderNotifications();
@@ -691,6 +718,73 @@
                 visualAlertTimeout = setTimeout(() => {
                     visualAlert.classList.add('-translate-y-full');
                 }, 3000);
+            }
+
+            function toggleSound() {
+                if (!soundInitialized) {
+                    testSound();
+                } else {
+                    soundEnabled = !soundEnabled;
+                    localStorage.setItem('soundEnabled', soundEnabled);
+                    updateSoundUI();
+                    showToast(soundEnabled ? 'Som ativado' : 'Som desativado', 'info');
+                }
+            }
+
+            function updateVolume() {
+                const volume = volumeControl.value / 100;
+                notificationSound.volume = volume;
+                localStorage.setItem('soundVolume', volumeControl.value);
+            }
+
+            function updateSoundUI() {
+                if (soundEnabled) {
+                    soundToggle.classList.remove('bg-red-100', 'text-red-700');
+                    soundToggle.classList.add('bg-indigo-100', 'text-indigo-700');
+                    soundToggle.querySelector('i').className = 'fas fa-volume-up text-xl';
+                } else {
+                    soundToggle.classList.remove('bg-indigo-100', 'text-indigo-700');
+                    soundToggle.classList.add('bg-red-100', 'text-red-700');
+                    soundToggle.querySelector('i').className = 'fas fa-volume-mute text-xl';
+                }
+            }
+
+            function playNotificationSound() {
+                if (soundEnabled && soundInitialized) {
+                    notificationSound.currentTime = 0;
+                    notificationSound.play().catch(error => {
+                        console.log('Erro ao tocar som:', error);
+                    });
+                }
+            }
+
+            function initializeSound() {
+                // Carrega o som
+                notificationSound.load();
+                
+                // Configura o volume inicial
+                const savedVolume = localStorage.getItem('soundVolume') || 50;
+                volumeControl.value = savedVolume;
+                notificationSound.volume = savedVolume / 100;
+                
+                // Tenta inicializar o som
+                if (soundEnabled) {
+                    testSound();
+                }
+            }
+
+            function testSound() {
+                notificationSound.currentTime = 0;
+                notificationSound.play().then(() => {
+                    soundInitialized = true;
+                    showToast('Som inicializado com sucesso!', 'success');
+                }).catch(error => {
+                    console.log('Erro ao inicializar som:', error);
+                    showToast('Não foi possível inicializar o som. Verifique as permissões do navegador.', 'error');
+                    soundEnabled = false;
+                    localStorage.setItem('soundEnabled', 'false');
+                    updateSoundUI();
+                });
             }
 
             // Make functions available globally for button clicks
