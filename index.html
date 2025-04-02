@@ -185,29 +185,6 @@
             </div>
         </div>
 
-        <!-- Audio elements -->
-        <audio id="notificationSound" preload="auto">
-            <source src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU" type="audio/wav">
-        </audio>
-        <audio id="alarmSound" preload="auto" loop>
-            <source src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU" type="audio/wav">
-        </audio>
-        <audio id="urgentSound" preload="auto">
-            <source src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU" type="audio/wav">
-        </audio>
-
-        <!-- Sound Controls -->
-        <div class="fixed bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg flex items-center space-x-3">
-            <button id="toggleSound" class="p-2 rounded-full hover:bg-gray-100 transition-colors" title="Ativar/Desativar Som">
-                <i class="fas fa-volume-up text-indigo-600"></i>
-            </button>
-            <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="0.5" class="w-24">
-            <span id="soundStatus" class="text-sm text-gray-500"></span>
-            <button id="testSound" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md text-sm hover:bg-indigo-200 transition">
-                <i class="fas fa-play mr-1"></i> Testar Som
-            </button>
-        </div>
-
         <!-- Visual Alert -->
         <div id="visualAlert" class="fixed top-0 left-0 w-full h-1 bg-red-500 transform -translate-y-full transition-transform duration-300"></div>
     </div>
@@ -225,8 +202,6 @@
             const emptyNotifications = document.getElementById('emptyNotifications');
             const clearNotifications = document.getElementById('clearNotifications');
             const notificationCount = document.getElementById('notificationCount');
-            const notificationSound = document.getElementById('notificationSound');
-            const alarmSound = document.getElementById('alarmSound');
             const alarmModal = document.getElementById('alarmModal');
             const alarmMessage = document.getElementById('alarmMessage');
             const snoozeAlarm = document.getElementById('snoozeAlarm');
@@ -234,11 +209,6 @@
             const filterAll = document.getElementById('filterAll');
             const filterPending = document.getElementById('filterPending');
             const filterPaid = document.getElementById('filterPaid');
-            const toggleSound = document.getElementById('toggleSound');
-            const volumeControl = document.getElementById('volumeControl');
-            const urgentSound = document.getElementById('urgentSound');
-            const soundStatus = document.getElementById('soundStatus');
-            const testSound = document.getElementById('testSound');
             const visualAlert = document.getElementById('visualAlert');
             
             // State
@@ -247,11 +217,6 @@
             let currentFilter = 'all';
             let alarmTimeouts = {};
             let snoozeTimeouts = {};
-            
-            // Sound settings
-            let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
-            let volume = parseFloat(localStorage.getItem('volume')) || 0.5;
-            let soundTested = false;
             let visualAlertTimeout = null;
             
             // Initialize
@@ -259,8 +224,6 @@
             updateNotificationBadge();
             checkDueBills();
             setupAlarms();
-            updateSoundSettings();
-            testSoundSystem();
 
             // Set up interval to check for due bills every minute
             setInterval(checkDueBills, 60000);
@@ -275,20 +238,6 @@
             filterPaid.addEventListener('click', () => changeFilter('paid'));
             snoozeAlarm.addEventListener('click', snoozeCurrentAlarm);
             dismissAlarm.addEventListener('click', dismissCurrentAlarm);
-            toggleSound.addEventListener('click', () => {
-                soundEnabled = !soundEnabled;
-                localStorage.setItem('soundEnabled', soundEnabled);
-                updateSoundSettings();
-            });
-            volumeControl.addEventListener('input', (e) => {
-                volume = parseFloat(e.target.value);
-                localStorage.setItem('volume', volume);
-                updateSoundSettings();
-            });
-            testSound.addEventListener('click', () => {
-                playNotificationSound('normal');
-                showVisualAlert('normal');
-            });
 
             // Functions
             function addBill(e) {
@@ -485,16 +434,8 @@
             }
 
             function triggerAlarm(bill) {
-                // Play alarm sound
-                if (soundEnabled) {
-                    alarmSound.currentTime = 0;
-                    alarmSound.volume = volume;
-                    alarmSound.play().catch(() => {
-                        showVisualAlert('urgent');
-                    });
-                } else {
-                    showVisualAlert('urgent');
-                }
+                // Show visual alert
+                showVisualAlert('urgent');
                 
                 // Show alarm modal
                 alarmMessage.textContent = `O boleto "${bill.name}" venceu agora! Valor: R$ ${bill.value.toFixed(2)}`;
@@ -529,9 +470,6 @@
                 const bill = bills.find(b => b.id === billId);
                 
                 if (bill) {
-                    // Stop alarm sound
-                    alarmSound.pause();
-                    
                     // Hide modal
                     alarmModal.classList.add('hidden');
                     
@@ -548,9 +486,6 @@
 
             function dismissCurrentAlarm() {
                 const billId = parseInt(alarmModal.dataset.billId);
-                
-                // Stop alarm sound
-                alarmSound.pause();
                 
                 // Hide modal
                 alarmModal.classList.add('hidden');
@@ -599,7 +534,7 @@
                 if (hasNewNotification) {
                     saveNotifications();
                     updateNotificationBadge();
-                    playNotificationSound(minutesDiff <= 0 ? 'urgent' : 'normal');
+                    showVisualAlert(minutesDiff <= 0 ? 'urgent' : 'normal');
                     
                     if (!notificationModal.classList.contains('hidden')) {
                         renderNotifications();
@@ -700,65 +635,6 @@
                     notificationCount.classList.add('hidden');
                     notificationBtn.classList.remove('pulse-animation');
                 }
-            }
-
-            function testSoundSystem() {
-                if (!soundTested) {
-                    const testSound = new Audio();
-                    testSound.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU';
-                    testSound.play().then(() => {
-                        soundTested = true;
-                        updateSoundStatus('Som ativado');
-                    }).catch(() => {
-                        soundEnabled = false;
-                        updateSoundStatus('Som bloqueado - usando alertas visuais');
-                        showToast('Usando alertas visuais em vez de som', 'info');
-                    });
-                }
-            }
-
-            function playNotificationSound(type = 'normal') {
-                if (!soundEnabled) {
-                    showVisualAlert(type);
-                    return;
-                }
-                
-                const sound = type === 'urgent' ? urgentSound : notificationSound;
-                sound.currentTime = 0;
-                sound.volume = volume;
-                
-                const playPromise = sound.play();
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        updateSoundStatus('Som tocando...');
-                        showVisualAlert(type);
-                    }).catch(error => {
-                        console.log('Erro ao tocar som:', error);
-                        updateSoundStatus('Erro ao tocar som - usando alertas visuais');
-                        showVisualAlert(type);
-                        showToast('Usando alertas visuais em vez de som', 'warning');
-                    });
-                }
-            }
-
-            function updateSoundSettings() {
-                const icon = toggleSound.querySelector('i');
-                if (soundEnabled) {
-                    icon.className = 'fas fa-volume-up text-indigo-600';
-                    updateSoundStatus('Som ativado');
-                } else {
-                    icon.className = 'fas fa-volume-mute text-gray-400';
-                    updateSoundStatus('Som desativado');
-                }
-                
-                // Update volume for all audio elements
-                [notificationSound, alarmSound, urgentSound].forEach(audio => {
-                    audio.volume = volume;
-                });
-            }
-
-            function updateSoundStatus(message) {
-                soundStatus.textContent = message;
             }
 
             function showToast(message, type) {
